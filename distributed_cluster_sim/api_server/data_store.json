@@ -1,0 +1,16 @@
+{
+    "nodes": {
+        "3a4565ff-750f-4e67-a151-36923bdd91c6": {
+            "cpu_cores": 4,
+            "available_cores": 4,
+            "pods": [],
+            "last_heartbeat": 1744478933.3883648
+        },
+        "0b3dd1c4-9fca-4bab-b1cc-492fb12f33fa": {
+            "cpu_cores": 3,
+            "available_cores": 3,
+            "pods": [],
+            "last_heartbeat": 1744562780.0884497
+        }
+    }
+}

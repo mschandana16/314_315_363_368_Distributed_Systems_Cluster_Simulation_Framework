@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from node_manager import NodeManager
 
 app = Flask(__name__)
@@ -81,6 +81,11 @@ def auto_scale():
     result = node_manager.auto_scale_and_reschedule(default_cpu=4)
     return jsonify(result), 200
 
+@app.route('/')
+def dashboard():
+    nodes = node_manager.get_node_statuses()
+    pods = node_manager.get_all_pods()
+    return render_template('index.html', nodes=nodes, pods=pods)
 
 
 if __name__ == '__main__':

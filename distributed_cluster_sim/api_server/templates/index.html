@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cluster Dashboard</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f7f7f7;
+        padding: 20px;
+      }
+      h1,
+      h2 {
+        color: #333;
+      }
+      .section {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #fff;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+      }
+      form {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      input {
+        padding: 5px;
+        font-size: 1em;
+      }
+      button {
+        padding: 5px 10px;
+        font-size: 1em;
+        cursor: pointer;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        background: #fff;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+      }
+      th {
+        background: #f0f0f0;
+      }
+      .alive {
+        color: green;
+        font-weight: bold;
+      }
+      .dead {
+        color: red;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Distributed Cluster Dashboard</h1>
+
+    <div class="section">
+      <h2>Node Operations</h2>
+      <form id="add-node-form">
+        <label for="cpu_cores">CPU Cores:</label>
+        <input type="number" id="cpu_cores" min="1" value="1" required />
+        <button type="submit">Add Node</button>
+      </form>
+      <button id="reschedule-btn">Reschedule Dead Nodes</button>
+    </div>
+
+    <div class="section">
+      <h2>Pod Operations</h2>
+      <form id="launch-pod-form">
+        <label for="cpu_required">CPU Required:</label>
+        <input type="number" id="cpu_required" min="1" value="1" required />
+        <button type="submit">Launch Pod</button>
+      </form>
+    </div>
+
+    <div class="section">
+      <h2>Node Status</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Node ID</th>
+            <th>Status</th>
+            <th>CPU Cores</th>
+            <th>Available Cores</th>
+            <th>Last Heartbeat</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for node_id, info in nodes.items() %}
+          <tr>
+            <td>{{ node_id }}</td>
+            <td class="{{ info.status }}">{{ info.status }}</td>
+            <td>{{ info.cpu_cores }}</td>
+            <td>{{ info.available_cores }}</td>
+            <td>{{ info.last_heartbeat }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Pods</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Pod ID</th>
+            <th>CPU</th>
+            <th>Assigned Node</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pod in pods %}
+          <tr>
+            <td>{{ pod.pod_id }}</td>
+            <td>{{ pod.cpu }}</td>
+            <td>{{ pod.assigned_node }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <script>
+      // Add Node
+      document
+        .getElementById("add-node-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const cores = parseInt(document.getElementById("cpu_cores").value);
+          const res = await fetch("/add_node", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cpu_cores: cores }),
+          });
+          if (res.ok) window.location.reload();
+          else alert("Error adding node");
+        });
+
+      // Launch Pod
+      document
+        .getElementById("launch-pod-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const cpu = parseInt(document.getElementById("cpu_required").value);
+          const res = await fetch("/launch_pod", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cpu_required: cpu }),
+          });
+          if (res.ok) window.location.reload();
+          else {
+            const data = await res.json();
+            alert(data.error || "Error launching pod");
+          }
+        });
+
+      // Reschedule Dead Nodes
+      document
+        .getElementById("reschedule-btn")
+        .addEventListener("click", async () => {
+          const res = await fetch("/reschedule_pods", { method: "POST" });
+          if (res.ok) window.location.reload();
+          else alert("Error rescheduling pods");
+        });
+    </script>
+  </body>
+</html>

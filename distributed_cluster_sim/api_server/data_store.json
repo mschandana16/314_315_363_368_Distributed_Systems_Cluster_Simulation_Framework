@@ -2,15 +2,48 @@
     "nodes": {
         "3d75edab-a751-4f90-abe1-04c26f4a2ba9": {
             "cpu_cores": 3,
-            "available_cores": 3,
-            "pods": [],
-            "last_heartbeat": 1745076678.048093
+            "available_cores": 1,
+            "pods": [
+                {
+                    "pod_id": "5c2fc0c6-6fc4-4e50-a063-f6aa26d0b3b4",
+                    "cpu": 2
+                }
+            ],
+            "last_heartbeat": 1745079964.1794386
         },
         "20f8de30-e3d2-401e-a959-f51629be3ee8": {
             "cpu_cores": 4,
-            "available_cores": 4,
+            "available_cores": 1,
+            "pods": [
+                {
+                    "pod_id": "c2410510-c109-4b4b-8353-a6b4aa0b655c",
+                    "cpu": 3
+                }
+            ],
+            "last_heartbeat": 1745079960.8820884
+        },
+        "733adca5-1c0d-429d-8afc-7c7e10fc3312": {
+            "cpu_cores": 5,
+            "available_cores": 0,
+            "pods": [
+                {
+                    "pod_id": "0fc3320e-517b-4216-b636-a5b17c0bf674",
+                    "cpu": 5
+                }
+            ],
+            "last_heartbeat": 1745079961.7214527
+        },
+        "8fc5b3ee-6a44-4fc4-87ed-58974ca02a5e": {
+            "cpu_cores": 3,
+            "available_cores": 3,
             "pods": [],
-            "last_heartbeat": 1745076680.3495505
+            "last_heartbeat": 1745079963.991589
+        },
+        "c660b965-c348-400a-abdd-1b592df971cb": {
+            "cpu_cores": 1,
+            "available_cores": 1,
+            "pods": [],
+            "last_heartbeat": 1745079961.0327945
         }
     }
 }

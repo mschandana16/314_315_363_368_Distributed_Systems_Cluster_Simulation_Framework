@@ -9,13 +9,16 @@ node_manager = NodeManager()
 def get_nodes():
     return jsonify({"nodes": node_manager.get_all_nodes()}), 200
 
+@app.route('/node_status', methods=['GET'])
+def node_status():
+    statuses = node_manager.get_node_statuses()
+    return jsonify({"node_statuses": statuses}), 200
 
 @app.route('/register_node', methods=['POST'])
 def register_node():
     data = request.get_json()
     # do something with data
     return jsonify({"message": "Node registered"})
-
 
 # POST to add a new node
 @app.route('/add_node', methods=['POST'])
@@ -39,7 +42,6 @@ def heartbeat():
         print(f"ERROR: node_id is missing or null. Payload: {data}")
         return jsonify({"error": "Node ID required"}), 400
 
-
     print(f"Received heartbeat for node_id: {node_id}")  #debug line
 
     updated = node_manager.update_heartbeat(node_id)
@@ -49,6 +51,36 @@ def heartbeat():
         return jsonify({"message": "Heartbeat received"}), 200
     else:
         return jsonify({"error": "Node not found"}), 404
+    
+@app.route('/launch_pod', methods=['POST'])
+def launch_pod():
+    data = request.get_json()
+    cpu_required = data.get("cpu_required")
+
+    if cpu_required is None:
+        return jsonify({"error": "CPU requirement not specified"}), 400
+
+    result = node_manager.schedule_pod(cpu_required)
+    
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result), 201
+
+@app.route('/pods', methods=['GET'])
+def list_pods():
+    pods = node_manager.get_all_pods()
+    return jsonify({"pods": pods}), 200
+
+@app.route('/reschedule_pods', methods=['POST'])
+def reschedule_pods():
+    result = node_manager.reschedule_pods()
+    return jsonify(result), 200
+
+@app.route('/auto_scale', methods=['POST'])
+def auto_scale():
+    result = node_manager.auto_scale_and_reschedule(default_cpu=4)
+    return jsonify(result), 200
+
 
 
 if __name__ == '__main__':

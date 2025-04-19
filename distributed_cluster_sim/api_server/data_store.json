@@ -1,16 +1,16 @@
 {
     "nodes": {
-        "3a4565ff-750f-4e67-a151-36923bdd91c6": {
-            "cpu_cores": 4,
-            "available_cores": 4,
-            "pods": [],
-            "last_heartbeat": 1744478933.3883648
-        },
-        "0b3dd1c4-9fca-4bab-b1cc-492fb12f33fa": {
+        "3d75edab-a751-4f90-abe1-04c26f4a2ba9": {
             "cpu_cores": 3,
             "available_cores": 3,
             "pods": [],
-            "last_heartbeat": 1744562780.0884497
+            "last_heartbeat": 1745076678.048093
+        },
+        "20f8de30-e3d2-401e-a959-f51629be3ee8": {
+            "cpu_cores": 4,
+            "available_cores": 4,
+            "pods": [],
+            "last_heartbeat": 1745076680.3495505
         }
     }
 }

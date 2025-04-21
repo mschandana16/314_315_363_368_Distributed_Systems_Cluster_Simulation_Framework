@@ -3,6 +3,7 @@ import time
 import json
 import os
 import subprocess
+import docker
 
 class NodeManager:
     def __init__(self):
@@ -50,6 +51,31 @@ class NodeManager:
             self.save_data(data)
             return True
         return False
+    
+
+    client = docker.from_env()
+
+    def kill_node(self, node_id):
+        data = self.load_data()
+        if node_id in data["nodes"]:
+            container_name = f"node_{node_id[:8]}"
+            try:
+                container = client.containers.get(container_name)
+                container.stop()
+                container.remove()
+            except docker.errors.NotFound:
+                print(f"Container {container_name} not found or already removed.")
+            except Exception as e:
+                print(f"Error stopping container: {e}")
+
+            # Mark node as dead and remove pods
+            data["nodes"][node_id]["last_heartbeat"] = time.time() - 99999
+            data["nodes"][node_id]["pods"] = []
+            self.save_data(data)
+            return True
+        return False
+
+
 
     def get_node_statuses(self, timeout=15):
         data = self.load_data()
@@ -69,27 +95,43 @@ class NodeManager:
 
         return statuses
     
-    def schedule_pod(self, cpu_required):
+    def schedule_pod(self, cpu_required, policy="first_fit"):
         data = self.load_data()
         pod_id = str(uuid.uuid4())
+        current_time = time.time()
 
-        # First-Fit Scheduling
+        candidates = []
+
         for node_id, node in data["nodes"].items():
-            if node["available_cores"] >= cpu_required:
-                node["available_cores"] -= cpu_required
-                node["pods"].append({
-                    "pod_id": pod_id,
-                    "cpu": cpu_required
-                })
+            last_beat = node.get("last_heartbeat", 0)
+            is_alive = (current_time - last_beat) <= 15
+            available = node["available_cores"]
 
-                self.save_data(data)
-                return {
-                    "message": "Pod scheduled",
-                    "pod_id": pod_id,
-                    "assigned_node": node_id
-                }
+            if is_alive and available >= cpu_required:
+                candidates.append((node_id, available))
 
-        return {"error": "No available node with sufficient CPU cores"}
+        if not candidates:
+            return {"error": "No alive node with sufficient CPU cores"}
+
+        if policy == "best_fit":
+            candidates.sort(key=lambda x: x[1])  # least remaining cores first
+        elif policy == "worst_fit":
+            candidates.sort(key=lambda x: -x[1])  # most remaining cores first
+        # First-fit just uses the existing order
+
+        chosen_node_id = candidates[0][0]
+        chosen_node = data["nodes"][chosen_node_id]
+        chosen_node["available_cores"] -= cpu_required
+        chosen_node["pods"].append({"pod_id": pod_id, "cpu": cpu_required})
+
+        self.save_data(data)
+
+        return {
+            "message": "Pod scheduled",
+            "pod_id": pod_id,
+            "assigned_node": chosen_node_id
+        }
+
 
     def get_all_pods(self):
         data = self.load_data()

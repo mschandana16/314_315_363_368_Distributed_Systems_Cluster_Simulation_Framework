@@ -52,19 +52,30 @@ def heartbeat():
     else:
         return jsonify({"error": "Node not found"}), 404
     
+@app.route('/kill_node/<node_id>', methods=['POST'])
+def kill_node(node_id):
+    success = node_manager.kill_node(node_id)
+    if success:
+        return jsonify({"message": f"Node {node_id} marked as dead and pods removed"}), 200
+    else:
+        return jsonify({"error": "Node not found"}), 404
+
+    
 @app.route('/launch_pod', methods=['POST'])
 def launch_pod():
     data = request.get_json()
     cpu_required = data.get("cpu_required")
+    policy = data.get("policy", "first_fit")  # default fallback
 
     if cpu_required is None:
         return jsonify({"error": "CPU requirement not specified"}), 400
 
-    result = node_manager.schedule_pod(cpu_required)
-    
+    result = node_manager.schedule_pod(cpu_required, policy)
+
     if "error" in result:
         return jsonify(result), 400
     return jsonify(result), 201
+
 
 @app.route('/pods', methods=['GET'])
 def list_pods():
@@ -86,6 +97,8 @@ def dashboard():
     nodes = node_manager.get_node_statuses()
     pods = node_manager.get_all_pods()
     return render_template('index.html', nodes=nodes, pods=pods)
+
+
 
 
 if __name__ == '__main__':

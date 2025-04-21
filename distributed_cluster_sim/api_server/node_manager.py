@@ -3,7 +3,6 @@ import time
 import json
 import os
 import subprocess
-import docker
 
 class NodeManager:
     def __init__(self):
@@ -20,7 +19,6 @@ class NodeManager:
         with open(self.data_file, 'w') as f:
             json.dump(data, f, indent=4)
 
-
     def add_node(self, cpu_cores):
         data = self.load_data()
         node_id = str(uuid.uuid4())
@@ -32,17 +30,16 @@ class NodeManager:
         }
         self.save_data(data)
 
-        #Launch Docker container to simulate the node
+        # Launch Docker container to simulate the node
         subprocess.Popen([
             "docker", "run", "-d",
             "--name", f"node_{node_id[:8]}",
             "-e", f"NODE_ID={node_id}",
-            "-e", "API_URL=http://host.docker.internal:5000/heartbeat",  # Adjust as needed
+            "-e", "API_URL=http://host.docker.internal:5000/heartbeat",
             "node-sim"
         ])
 
         return node_id
-
 
     def update_heartbeat(self, node_id):
         data = self.load_data()
@@ -51,31 +48,22 @@ class NodeManager:
             self.save_data(data)
             return True
         return False
-    
-
-    client = docker.from_env()
 
     def kill_node(self, node_id):
         data = self.load_data()
         if node_id in data["nodes"]:
             container_name = f"node_{node_id[:8]}"
-            try:
-                container = client.containers.get(container_name)
-                container.stop()
-                container.remove()
-            except docker.errors.NotFound:
-                print(f"Container {container_name} not found or already removed.")
-            except Exception as e:
-                print(f"Error stopping container: {e}")
+            
+            # Kill Docker container
+            subprocess.run(["docker", "rm", "-f", container_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-            # Mark node as dead and remove pods
+            # Simulate node death by backdating heartbeat
             data["nodes"][node_id]["last_heartbeat"] = time.time() - 99999
-            data["nodes"][node_id]["pods"] = []
+
+            # ❗ DO NOT delete pods here — allow reschedule_pods to handle it
             self.save_data(data)
             return True
         return False
-
-
 
     def get_node_statuses(self, timeout=15):
         data = self.load_data()
@@ -94,7 +82,7 @@ class NodeManager:
             }
 
         return statuses
-    
+
     def schedule_pod(self, cpu_required, policy="first_fit"):
         data = self.load_data()
         pod_id = str(uuid.uuid4())
@@ -117,7 +105,6 @@ class NodeManager:
             candidates.sort(key=lambda x: x[1])  # least remaining cores first
         elif policy == "worst_fit":
             candidates.sort(key=lambda x: -x[1])  # most remaining cores first
-        # First-fit just uses the existing order
 
         chosen_node_id = candidates[0][0]
         chosen_node = data["nodes"][chosen_node_id]
@@ -131,7 +118,6 @@ class NodeManager:
             "pod_id": pod_id,
             "assigned_node": chosen_node_id
         }
-
 
     def get_all_pods(self):
         data = self.load_data()
@@ -155,7 +141,6 @@ class NodeManager:
         rescheduled_pods = []
         failed_pods = []
 
-        # Separate dead and alive nodes
         for node_id, node_info in data["nodes"].items():
             last_beat = node_info.get("last_heartbeat", 0)
             if current_time - last_beat > 15:
@@ -163,7 +148,6 @@ class NodeManager:
             else:
                 alive_nodes[node_id] = node_info
 
-        # Move pods from dead nodes to alive nodes
         for dead_node in dead_nodes:
             dead_node_info = data["nodes"].pop(dead_node)
             for pod in dead_node_info["pods"]:
@@ -171,7 +155,6 @@ class NodeManager:
                 pod_id = pod["pod_id"]
                 rescheduled = False
 
-                # Try to reschedule pod on an alive node
                 for node_id, node_info in alive_nodes.items():
                     if node_info["available_cores"] >= cpu_required:
                         node_info["available_cores"] -= cpu_required
@@ -195,8 +178,6 @@ class NodeManager:
                         "reason": "Insufficient resources"
                     })
 
-
-        # Update the main data dict with modified alive nodes
         for node_id in alive_nodes:
             data["nodes"][node_id] = alive_nodes[node_id]
 
@@ -207,33 +188,20 @@ class NodeManager:
             "pods_rescheduled": rescheduled_pods,
             "pods_failed": failed_pods
         }
-    
+
     def auto_scale_and_reschedule(self, default_cpu=4):
-        """
-        1. First attempt to reschedule pods from dead nodes.
-        2. For any pods that still failed, add new nodes (with default_cpu cores)
-           and place those pods on the fresh nodes.
-        Returns a combined summary.
-        """
-        # Step A: do the normal reschedule
         initial = self.reschedule_pods()
 
-        # Prepare to track auto‑scaled nodes & pods
         auto_nodes = []
         auto_rescheduled = []
 
-        # For each pod that failed, spin up a new node & assign it
         for p in initial["pods_failed"]:
             pod_id = p["pod_id"]
-            # Use the pod's CPU requirement if you included it in failed entries,
-            # otherwise fall back to default_cpu
             cpu_req = p.get("cpu", default_cpu)
 
-            # 1) add a new node
             new_node_id = self.add_node(cpu_req)
             auto_nodes.append(new_node_id)
 
-            # 2) schedule that pod on the brand‑new node
             data = self.load_data()
             node = data["nodes"][new_node_id]
             node["available_cores"] -= cpu_req
@@ -250,7 +218,6 @@ class NodeManager:
             "auto_scaled_nodes": auto_nodes,
             "auto_rescheduled_pods": auto_rescheduled
         }
-    
 
     def get_all_nodes(self):
         data = self.load_data()
